@@ -7,10 +7,17 @@
         SELECT report_count FROM spam_number
      <!--   INSERT INTO spam_number VALUES("010-2222-2222",0)-->
 
+
     </select>
     <select id="SearchNumber" parameterType="String" resultType="Project.demo.DTO.TestDTO">
         SELECT report_count FROM spam_number WHERE phone= #{phone}
     </select>
+    
+    
+    <select id="InsertReport" parameterType="String" resultType="Project.demo.DTO.TestDTO">
+        INSERT INTO spam_number(phone, report_count) VALUES(#{phone}, 1) ON DUPLICATE KEY UPDATE phone = #{phone}, report_count = report_count + 1
+    </select>
+
 
 </mapper>
 

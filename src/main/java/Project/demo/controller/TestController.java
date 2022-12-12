@@ -27,7 +27,7 @@ public class TestController {
         return testService.getUserList();
     }
 
-
+    
     @RequestMapping(value = "/user/{phone}", method = RequestMethod.GET)
     public List<TestDTO> getNumber(@PathVariable String phone)
     {
@@ -35,5 +35,10 @@ public class TestController {
     }
 
 
+    @RequestMapping(value = "/report/{phone}", method = RequestMethod.GET)
+    public List<TestDTO> InsertReport(@PathVariable String phone)
+    {
+        return testService.InsertReport(phone);
+    }
 
 }
