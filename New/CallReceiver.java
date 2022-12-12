@@ -42,13 +42,6 @@ public class CallReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
 
-
-        // TODO: This method is called when the BroadcastReceiver is receiving
-        // an Intent broadcast.
-        //throw new UnsupportedOperationException("Not yet implemented");
-
-        Log.d(TAG_phoneState,"onReceive()");
-
         if (intent.getAction().equals("android.intent.action.PHONE_STATE")) {
 
             //TelecomManager telephonyManager = (TelecomManager) context.getSystemService(Context.TELECOM_SERVICE);
@@ -59,7 +52,6 @@ public class CallReceiver extends BroadcastReceiver {
 
                 // 현재 폰 상태 가져옴
                 String state = extras.getString(TelephonyManager.EXTRA_STATE);
-                Log.d("phone_state", state);
 
                 // 중복 호출 방지
                 if (state.equals(phonestate)) {
@@ -71,18 +63,12 @@ public class CallReceiver extends BroadcastReceiver {
                 // [벨 울리는 중]
                 if (state.equals(TelephonyManager.EXTRA_STATE_RINGING)) {
 
-
-
                     if(MainActivity.use_set == true) {
                         String phone;
 
                         if (intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) != null) {
                             // 수신 번호 가져옴
                             phone = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
-
-                            Log.d("qqq", "통화벨 울리는중");
-                            Log.d("phone_number", "수신 전화번호: " + phone);
-
 
                             try {
                                 // 서버에 수신 전화번호 보내서 결과 받아옴
@@ -102,46 +88,88 @@ public class CallReceiver extends BroadcastReceiver {
                                 }
 
                             } catch (Exception e) {
-                                Log.d("error_e", String.valueOf(e));
                                 e.printStackTrace();
                             }
-                            Log.d("res_22", result);
-
                         }
                     }
-
                 }
                 // [통화 중]
                 else if (state.equals(TelephonyManager.EXTRA_STATE_OFFHOOK)) {
-                    Log.d("qqq", "통화중");
-                    // Todo: 소켓 통신 받아오기
-                    // -> 앱 실행시 스레드로 해결
+                    if(intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)!=null) {
+
+                        // 소켓 통신 스레드
+                        Thread t = new Thread(() -> {
+                            Socket clientSocket = new Socket();
+                            InetSocketAddress ipep = new InetSocketAddress(MainActivity.IP, MainActivity.Port);
+
+                            try {
+                                clientSocket.connect(ipep);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+
+                            // 소켓이 접속이 완료되면 inputstream과 outputstream을 받는다.
+                            try (InputStream receiver = clientSocket.getInputStream();) {
+                                byte[] datalength = new byte[4];
+                                // 데이터 길이를 받는다.
+                                receiver.read(datalength, 0, 4);
+
+                                // ByteBuffer를 통해 little 엔디언 형식으로 데이터 길이를 구한다.
+                                ByteBuffer b = ByteBuffer.wrap(datalength);
+                                b.order(ByteOrder.LITTLE_ENDIAN);
+                                int length = b.getInt();
+
+                                // 데이터를 받을 버퍼를 선언한다.
+                                byte [] data = new byte[length];
+                                // 데이터를 받는다.
+                                receiver.read(data, 0, length);
+
+                                // byte형식의 데이터를 string형식으로 변환한다.
+                                String msg = new String(data, "UTF-8");
+                                // 스트링 변환 이후 int로 변환(= 최종 값)
+                                int msg1 = parseInt(msg);
+
+                                // 받아온 값 이용할 수 있도록 가공 완.
+                                MainActivity.isVP = msg1;
+                                System.out.println(msg1);
+                            }
+                            catch (Throwable e) {
+                                e.printStackTrace();
+                            }
+                        });
+
+                        t.start();
+
+                        try {
+                            t.join();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+
+                        if(MainActivity.isVP == 1){
+                            Toast.makeText(context, "보이스피싱 의심 전화입니다 !", Toast.LENGTH_SHORT).show();
+                            if(MainActivity.vib_mode==true){
+                                vibrator.vibrate(3000);
+                            }
+                        } else {
+
+                        }
+                    }
                 }
                 // [통화종료]
                 else if (state.equals(TelephonyManager.EXTRA_STATE_IDLE)) {
-                    Log.d("qqq", "통화종료 혹은 통화벨 종료");
-                    // Todo: 팝업창 띄워서 신고 기능 구현하기
-//                    // 일단 팝업창 띄워보려고 함
-//                    MainActivity ma = new MainActivity();
-//                    ma.showDialog();
+	        if(intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)!=null) {
+                        String phone = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER);
+                        phoneNumtoReport = phone;
 
-                    // Todo: 자동 신고
-                    // 받아온 판별 결과가 1이라면
-                    if(MainActivity.isVP == 1){
-                        // 서버에 수신 전화번호 신고
-                        gPHP = new GettingPHP();
-                        gPHP.execute(reportUrl+phoneNumtoReport);
+                        // 받아온 판별 결과가 1이라면 자동 신고
+                        if (MainActivity.isVP == 1) {
+                            // 서버에 수신 전화번호 신고
+                            gPHP = new GettingPHP();
+                            gPHP.execute(reportUrl+phoneNumtoReport);
+                            Toast.makeText(context, "보이스피싱 주의! 서버에 자동 신고되었습니다.", Toast.LENGTH_LONG).show();
+                        }
                     }
-
-                    // 자동 신고 url 확인용(전화번호 잘 넘겨받았는지, ,,,report로 잘 뜨는지)
-                    /*try {
-                        String ru = gPHP.execute(reportUrl+phoneNumtoReport).get();
-                        System.out.println(ru);
-                    } catch (ExecutionException e) {
-                        e.printStackTrace();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }*/
 
                 }
             }
@@ -165,7 +193,6 @@ public class CallReceiver extends BroadcastReceiver {
                 Log.d("2conn_2", "2 ok");
                 Log.d("conn_state", String.valueOf(conn));
 
-
                 if (conn != null) {
                     //conn.setConnectTimeout(10000);
                     //conn.setUseCaches(false);
@@ -186,7 +213,6 @@ public class CallReceiver extends BroadcastReceiver {
                             if (line == null)
                                 break;
                         }
-
                         br.close();
                     }
                     conn.disconnect();
