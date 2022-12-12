@@ -1,0 +1,25 @@
+# install packages
+
+# Colab에 Mecab 설치
+!git clone https://github.com/SOMJANG/Mecab-ko-for-Google-Colab.git
+%cd Mecab-ko-for-Google-Colab
+!bash install_mecab-ko_on_colab190912.sh
+
+pip install konlpy
+pip install JPype1
+wget https://bitbucket.org/eunjeon/mecab-ko/downloads/mecab-0.996-ko-0.9.2.tar.gz
+tar xvfz mecab-0.996-ko-0.9.2.tar.gz
+cd mecab-0.996-ko-0.9.2
+./configure
+make
+make check
+make install
+sudo ldconfig
+mecab --version
+
+wget https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz
+tar xvfz mecab-ko-dic-2.1.1-20180720.tar.gz
+cd mecab-ko-dic-2.1.1-20180720
+./configure
+make
+make install
