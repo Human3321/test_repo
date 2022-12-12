@@ -1,0 +1,1 @@
+web: java -jar AWS-EB-ebextensions-1.jar
